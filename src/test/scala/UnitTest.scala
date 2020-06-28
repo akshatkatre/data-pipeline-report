@@ -40,7 +40,7 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
       When("When I create a report in output path")
       createReport(csvPath, outputPath)
       Then("There should be a success file created in the output path")
-      assert(new java.io.File(outputPath + "\\_SUCCESS").exists == true)
+      assert(new java.io.File(outputPath + "//_SUCCESS").exists == true)
     }
     scenario("Validate file count") {
       implicit val spark: SparkSession = createSession
@@ -83,7 +83,7 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
         }(0)
         .getName
 
-      val input_file = outputPath + "\\" + fname
+      val input_file = outputPath + "//" + fname
 
       val json_content = scala.io.Source.fromFile(input_file).mkString
 
