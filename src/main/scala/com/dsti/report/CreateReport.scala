@@ -35,12 +35,14 @@ object CreateReport {
   }
 
   /*
-    Method: returnReportRow
-      With input date Get count by IP for the date and store in data frame
-      With input date Get count by URI for the date and store in data frame
-      With input date Get count of traffic 10 days prior and 10 days after and store in data frame
+    Method: generateReport
+      Read a web server log file, convert to a data frame
+      Identify all the dates that have greater than 20,000 hits for each of these dates
+        Get count by IP for the date and store in data frame
+        Get count by URI for the date and store in data frame
+        Get count of traffic 10 days prior and 10 days after and store in data frame
       Combine the data frames into a single data frame.
-      Return the data frame
+      Write contents to a JSON file
     Parameters:
       dateStr : (String)
         Date for which statistic need to be computed.
@@ -49,51 +51,6 @@ object CreateReport {
       df : (DataFrame)
         A data frame that contains the reporting information for the input date
    */
-  def returnReportRow(dateStr: String, spark: SparkSession): DataFrame = {
-
-    //This attribute controls the number limit of rows the SQL statement returns. The value is set to 100 as not not specifiying a limit is causing OOM messages in the spark shell
-    val sqlLimit: Int = 100
-
-    // get total count of records for the input date
-    val dt_ct = spark.sql(
-      "select date, count  from HighCountLog where date = '" + dateStr + "'")
-
-    // get count by ipaddress for the input date
-    val ip_df = spark.sql(
-      "select ip, count(*) as count  from ExAccessLog  where cast(datetime as date) = '" + dateStr + "' group by ip Order by 2 desc limit " + sqlLimit)
-
-    // get count by uri for input date
-    val ip_uri = spark.sql(
-      "select uri, count(*) as count  from ExAccessLog  where cast(datetime as date) = '" + dateStr + "' group by uri Order by 2 desc limit " + sqlLimit)
-
-    // get count by date range
-    val date_range_df = spark.sql(
-      "select cast(datetime as date) as date, count(*) as count from ExAccessLog where cast(datetime as date) between date_sub('" + dateStr + "',10) and date_add('" + dateStr + "',10) group by date order by date")
-
-    //Create a consolidated data frame with contents of above 4 data frames.
-    val ret_df = dt_ct
-      .withColumn(
-        "ip",
-        typedLit(
-          ip_df.collect
-            .map(x => Map(x.get(0).toString -> x.get(1).toString))
-            .toList))
-      .withColumn(
-        "uri",
-        typedLit(
-          ip_uri.collect
-            .map(x => Map(x.get(0).toString -> x.get(1).toString))
-            .toList))
-      .withColumn(
-        "date_range",
-        typedLit(
-          date_range_df.collect
-            .map(x => Map(x.get(0).toString -> x.get(1).toString))
-            .toList))
-
-    ret_df
-  }
-
   def generateReport(
     inputFilePath: String,
     reportExportPath: String,
