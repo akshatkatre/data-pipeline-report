@@ -12,7 +12,7 @@ import com.dsti.report.CreateReport
 import scala.reflect.io.Directory
 import java.io.File
 
-import scala.util.parsing.json.JSON
+// import scala.util.parsing.json.JSON
 
 class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
   def createSession: SparkSession =
@@ -20,9 +20,8 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
 
   // sample implementation only
 
-  def createReport(
-    logPath: String,
-    outputPath: String)(implicit spark: SparkSession): Unit = {
+  def createReport(logPath: String,
+                   outputPath: String)(implicit spark: SparkSession): Unit = {
     val directory = new Directory(new File(outputPath))
     directory.deleteRecursively()
     import spark.implicits._
@@ -64,17 +63,12 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
       implicit val spark: SparkSession = createSession
       Given("I have a test dataset and an output path")
       val outputPath = "target/test/report"
-      val expectedDateCount = 20000
+      val expectedCount = 20000
 
       When(
-        "When I open the first json file and read the count record for the date")
-      val numberOfJsonFiles: Int = new java.io.File(outputPath).listFiles
-        .filter(_.isFile)
-        .toList
-        .filter { file =>
-          file.getName.endsWith("json")
-        }
-        .length
+        "When I open the first json file and read the count record for the date"
+      )
+
       val fname = new java.io.File(outputPath).listFiles
         .filter(_.isFile)
         .toList
@@ -85,16 +79,16 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
 
       val input_file = outputPath + "//" + fname
 
-      val json_content = scala.io.Source.fromFile(input_file).mkString
-      scala.io.Source.fromFile(input_file).close()
-
-      val json_data =
-        JSON.parseFull(json_content).get.asInstanceOf[Map[String, Any]]
-      Then("The count record should match the Map objects count record")
+      val df = spark.read.option("multiline", "true").json(input_file)
       assert(
-        json_data("count").toString
-          .replace(".0", "")
-          .toInt > expectedDateCount)
+        df.select("count")
+          .collectAsList
+          .get(0)
+          .toString
+          .replace("[", "")
+          .replace("]", "")
+          .toLong > expectedCount
+      )
     }
   }
 }
