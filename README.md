@@ -7,10 +7,10 @@ The skeleton code was given in (https://github.com/jlcanela/spark-hands-on/wiki)
 The code has been modified to do the following:
 
 - Read a Apache web server log file
-- Identify all the high traffic dates where the webserver has more than 20000 requests
+- Identify all the high traffic dates where the web-server has more than 20000 requests
 - For each high traffic date 
 	- compute the list of number of access by URI for each URI
-	- compute the list of number of access per IP address for each IP addres
+	- compute the list of number of access per IP address for each IP address
 	- compute the list of number of connections from 10  days before to 10 days after
 - Generate the report in a JSON file format
 
@@ -75,9 +75,10 @@ To generate the report navigate to the bin directory of spark home
 
 On windows
 
-.\spark-submit --class com.dsti.report.CreateReport --master "local[*]"  <absolute_path_of_fatjar> "absolute_path_of_log_file" "absolute_path_of_output_directory" 
+.\spark-submit --driver-memory 3g --class com.dsti.report.CreateReport --master "local[*]"  <absolute_path_of_fatjar> "absolute_path_of_log_file" "absolute_path_of_output_directory" 
 
 
 ### Known Issues
 - When the program is run in spark-shell it throws an Out of Memory exception and terminates.
+To get around this issue the driver-memory has been set to 3GB while running spark-submit
 

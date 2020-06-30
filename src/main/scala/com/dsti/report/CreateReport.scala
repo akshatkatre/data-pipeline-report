@@ -1,13 +1,7 @@
 package com.dsti.report
 
-import java.nio.file.{ Paths, Files }
-import java.io.File
-import scala.util.parsing.json.JSON
-import org.apache.spark
-import org.apache.spark.sql.{ DataFrame, SparkSession, functions, _ }
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types._
-import org.apache.spark.sql
 
 case class AccessLog(
   ip: String,
@@ -44,12 +38,14 @@ object CreateReport {
       Combine the data frames into a single data frame.
       Write contents to a JSON file
     Parameters:
-      dateStr : (String)
-        Date for which statistic need to be computed.
-
+      inputFilePath : (String)
+        path of log file that needs to be processed.
+      reportExportPath : (String)
+        path of report export directory.
+      spark : (SparkSession)
+        SparkSession object.
     Return Value:
-      df : (DataFrame)
-        A data frame that contains the reporting information for the input date
+      Unit
    */
   def generateReport(
     inputFilePath: String,
@@ -63,7 +59,6 @@ object CreateReport {
 
     import spark.implicits._
     val logAsString = logs.map(_.getString(0))
-    //logAsString.count
 
     AccessLog.apply _
     val R =
@@ -87,9 +82,7 @@ object CreateReport {
         params(9))
     })
 
-    //ds.printSchema
-
-    //create data frame with new date time column
+    //create data frame with new datetime column
     val dsWithTime = ds.withColumn(
       "datetime",
       to_timestamp(ds("datetime"), "dd/MMM/yyyy:HH:mm:ss X"))
@@ -113,6 +106,7 @@ object CreateReport {
     dsExtended.cache
     dsExtended.createOrReplaceTempView("ExAccessLog")
 
+    //create data frame with dates where number of records is greater than 20000
     val dsHighCount = spark.sql(
       "select cast(datetime as date) as date, count(*) as count from ExAccessLog group by date having count > 20000 order by count desc limit 10")
 
@@ -121,7 +115,6 @@ object CreateReport {
     dsHighCount.createOrReplaceTempView("HighCountLog")
 
     println("### Processing Report ###")
-
     //for each date in data frame dsHighCount invoke the method returnReportRow
     //store the contents in an array
     val rep_array = dsHighCount
@@ -129,21 +122,17 @@ object CreateReport {
       .collect
       .map(x => x.toString.slice(1, x.toString.length - 1))
       .map(dateStr => {
-
-        //This attribute controls the number limit of rows the SQL statement returns. The value is set to 100 as not not specifiying a limit is causing OOM messages in the spark shell
-        val sqlLimit: Int = 100
-
         // get total count of records for the input date
         val dt_ct = spark.sql(
           "select date, count  from HighCountLog where date = '" + dateStr + "'")
 
         // get count by ipaddress for the input date
         val ip_df = spark.sql(
-          "select ip, count(*) as count  from ExAccessLog  where cast(datetime as date) = '" + dateStr + "' group by ip Order by 2 desc limit " + sqlLimit)
+          "select ip, count(*) as count  from ExAccessLog  where cast(datetime as date) = '" + dateStr + "' group by ip Order by 2 desc")
 
         // get count by uri for input date
         val ip_uri = spark.sql(
-          "select uri, count(*) as count  from ExAccessLog  where cast(datetime as date) = '" + dateStr + "' group by uri Order by 2 desc limit " + sqlLimit)
+          "select uri, count(*) as count  from ExAccessLog  where cast(datetime as date) = '" + dateStr + "' group by uri Order by 2 desc")
 
         // get count by date range
         val date_range_df = spark.sql(

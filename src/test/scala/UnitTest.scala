@@ -1,17 +1,13 @@
 import com.holdenkarau.spark.testing.SharedSparkContext
 import org.apache.spark.sql.SparkSession
-
 import org.scalatest._
 import com.dsti.report.CreateReport
-
 import scala.reflect.io.Directory
 import java.io.File
 
 class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
   def createSession: SparkSession =
     SparkSession.builder().master("local[*]").getOrCreate()
-
-  // sample implementation only
 
   def createReport(
     logPath: String,
@@ -27,20 +23,25 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
   feature("web traffic report") {
     scenario("Validate success file exists") {
       implicit val spark: SparkSession = createSession
+
       Given("I have a test dataset and an output path")
       val csvPath = "src/test/resources/sample.log"
       val outputPath = "target/test/report"
+
       When("I create a report in output path")
       createReport(csvPath, outputPath)
+
       Then("There should be a success file created in the output path")
       assert(new java.io.File(outputPath + "//_SUCCESS").exists)
     }
+
     scenario("Validate file count") {
       implicit val spark: SparkSession = createSession
       Given("I have a test dataset and an output path")
       val csvPath = "src/test/resources/sample.log"
       val outputPath = "target/test/report"
       val expectedNumberOfGeneratedFiles: Int = 2
+
       When("I count the number of json files in the output path")
       val numberOfJsonFiles: Int = new java.io.File(outputPath).listFiles
         .filter(_.isFile)
@@ -49,12 +50,14 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
           file.getName.endsWith("json")
         }
         .length
+
       Then("There should be a success file created in the output path")
       assert(numberOfJsonFiles == expectedNumberOfGeneratedFiles)
     }
 
     scenario("Check header count record within a file") {
       implicit val spark: SparkSession = createSession
+
       Given("I have a test dataset and an output path and reports created")
       val outputPath = "target/test/report"
       val validColumnsInReport =
@@ -63,13 +66,11 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
       val validDates = List("2017-09-10", "2018-06-19")
 
       When("I open the json files and read the count and date records")
-
       val filesInReportDirectory =
         new java.io.File(outputPath).listFiles.filter(_.isFile).toList.filter {
           file =>
             file.getName.endsWith("json")
         }
-
       val filesToBeValidated =
         filesInReportDirectory.map(x => outputPath + "//" + x.getName)
 
