@@ -13,8 +13,9 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
 
   // sample implementation only
 
-  def createReport(logPath: String,
-                   outputPath: String)(implicit spark: SparkSession): Unit = {
+  def createReport(
+    logPath: String,
+    outputPath: String)(implicit spark: SparkSession): Unit = {
     val directory = new Directory(new File(outputPath))
     directory.deleteRecursively()
     import spark.implicits._
@@ -73,8 +74,7 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
         filesInReportDirectory.map(x => outputPath + "//" + x.getName)
 
       Then(
-        "The count of records should be greater than 20,000 and dates should be valid"
-      )
+        "The count of records should be greater than 20,000 and dates should be valid")
       filesToBeValidated.map(file => {
         println(file)
         val df = spark.read.option("multiline", "true").json(file)
@@ -88,14 +88,11 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
             .toString
             .replace("[", "")
             .replace("]", "")
-            .toLong > expectedCount
-        )
+            .toLong > expectedCount)
         //validate if dates in report as expected
         assert(
           validDates.contains(
-            df.select("date").head.toString.replace("[", "").replace("]", "")
-          )
-        )
+            df.select("date").head.toString.replace("[", "").replace("]", "")))
       })
     }
   }
