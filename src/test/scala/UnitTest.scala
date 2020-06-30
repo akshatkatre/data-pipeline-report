@@ -1,18 +1,11 @@
 import com.holdenkarau.spark.testing.SharedSparkContext
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types.{
-  LongType,
-  StringType,
-  StructField,
-  StructType
-}
+
 import org.scalatest._
 import com.dsti.report.CreateReport
 
 import scala.reflect.io.Directory
 import java.io.File
-
-// import scala.util.parsing.json.JSON
 
 class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
   def createSession: SparkSession =
@@ -36,10 +29,10 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
       Given("I have a test dataset and an output path")
       val csvPath = "src/test/resources/sample.log"
       val outputPath = "target/test/report"
-      When("When I create a report in output path")
+      When("I create a report in output path")
       createReport(csvPath, outputPath)
       Then("There should be a success file created in the output path")
-      assert(new java.io.File(outputPath + "//_SUCCESS").exists == true)
+      assert(new java.io.File(outputPath + "//_SUCCESS").exists)
     }
     scenario("Validate file count") {
       implicit val spark: SparkSession = createSession
@@ -47,7 +40,7 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
       val csvPath = "src/test/resources/sample.log"
       val outputPath = "target/test/report"
       val expectedNumberOfGeneratedFiles: Int = 2
-      When("When I count the number of json files in the output path")
+      When("I count the number of json files in the output path")
       val numberOfJsonFiles: Int = new java.io.File(outputPath).listFiles
         .filter(_.isFile)
         .toList
@@ -61,34 +54,49 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
 
     scenario("Check header count record within a file") {
       implicit val spark: SparkSession = createSession
-      Given("I have a test dataset and an output path")
+      Given("I have a test dataset and an output path and reports created")
       val outputPath = "target/test/report"
+      val validColumnsInReport =
+        Array("date", "count", "ip", "uri", "date_range")
       val expectedCount = 20000
+      val validDates = List("2017-09-10", "2018-06-19")
 
-      When(
-        "When I open the first json file and read the count record for the date"
+      When("I open the json files and read the count and date records")
+
+      val filesInReportDirectory =
+        new java.io.File(outputPath).listFiles.filter(_.isFile).toList.filter {
+          file =>
+            file.getName.endsWith("json")
+        }
+
+      val filesToBeValidated =
+        filesInReportDirectory.map(x => outputPath + "//" + x.getName)
+
+      Then(
+        "The count of records should be greater than 20,000 and dates should be valid"
       )
-
-      val fname = new java.io.File(outputPath).listFiles
-        .filter(_.isFile)
-        .toList
-        .filter { file =>
-          file.getName.endsWith("json")
-        }(0)
-        .getName
-
-      val input_file = outputPath + "//" + fname
-
-      val df = spark.read.option("multiline", "true").json(input_file)
-      assert(
-        df.select("count")
-          .collectAsList
-          .get(0)
-          .toString
-          .replace("[", "")
-          .replace("]", "")
-          .toLong > expectedCount
-      )
+      filesToBeValidated.map(file => {
+        println(file)
+        val df = spark.read.option("multiline", "true").json(file)
+        //Validate if the columns in the report are the same as expected
+        assert(df.schema.names.diff(validColumnsInReport).isEmpty)
+        //Validate if count record greater than 20000
+        assert(
+          df.select("count")
+            .collectAsList
+            .get(0)
+            .toString
+            .replace("[", "")
+            .replace("]", "")
+            .toLong > expectedCount
+        )
+        //validate if dates in report as expected
+        assert(
+          validDates.contains(
+            df.select("date").head.toString.replace("[", "").replace("]", "")
+          )
+        )
+      })
     }
   }
 }
