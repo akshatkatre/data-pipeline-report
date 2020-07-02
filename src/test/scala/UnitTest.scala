@@ -5,6 +5,11 @@ import com.dsti.report.CreateReport
 import scala.reflect.io.Directory
 import java.io.File
 
+import scala.io._
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
+
 class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
   def createSession: SparkSession =
     SparkSession.builder().master("local[*]").getOrCreate()
@@ -40,7 +45,7 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
       Given("I have a test dataset and an output path")
       val csvPath = "src/test/resources/sample.log"
       val outputPath = "target/test/report"
-      val expectedNumberOfGeneratedFiles: Int = 2
+      val expectedNumberOfGeneratedFiles: Int = 1
 
       When("I count the number of json files in the output path")
       val numberOfJsonFiles: Int = new java.io.File(outputPath).listFiles
@@ -55,15 +60,14 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
       assert(numberOfJsonFiles == expectedNumberOfGeneratedFiles)
     }
 
-    scenario("Check header count record within a file") {
+    scenario("Validate file contents") {
       implicit val spark: SparkSession = createSession
-
       Given("I have a test dataset and an output path and reports created")
       val outputPath = "target/test/report"
       val validColumnsInReport =
         Array("date", "count", "ip", "uri", "date_range")
       val expectedCount = 20000
-      val validDates = List("2017-09-10", "2018-06-19")
+      val validDates = List("2017-02-08", "2017-09-10")
 
       When("I open the json files and read the count and date records")
       val filesInReportDirectory =
@@ -76,24 +80,25 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
 
       Then(
         "The count of records should be greater than 20,000 and dates should be valid")
-      filesToBeValidated.map(file => {
-        println(file)
-        val df = spark.read.option("multiline", "true").json(file)
-        //Validate if the columns in the report are the same as expected
-        assert(df.schema.names.diff(validColumnsInReport).isEmpty)
-        //Validate if count record greater than 20000
-        assert(
-          df.select("count")
-            .collectAsList
-            .get(0)
-            .toString
-            .replace("[", "")
-            .replace("]", "")
-            .toLong > expectedCount)
-        //validate if dates in report as expected
-        assert(
-          validDates.contains(
-            df.select("date").head.toString.replace("[", "").replace("]", "")))
+      filesToBeValidated.map(fileName => {
+        val file = Source.fromFile(fileName)
+        val lines = file.getLines.toList
+        file.close
+        val mapper = new ObjectMapper() with ScalaObjectMapper
+        mapper.registerModule(DefaultScalaModule)
+        lines.map(line => {
+          val parsedJson = mapper.readValue[Map[String, Object]](line)
+          import spark.implicits._
+          val df = spark.read.json(Seq(line).toDS)
+          //Validate if the columns in the report are the same as expected
+          assert(df.schema.names.diff(validColumnsInReport).isEmpty)
+
+          //println(parsedJson("count").toString.toInt)
+          assert(parsedJson("count").toString.toInt > expectedCount)
+
+          //println(parsedJson("date").toString)
+          assert(validDates.contains(parsedJson("date").toString))
+        })
       })
     }
   }

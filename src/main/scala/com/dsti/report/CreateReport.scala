@@ -166,14 +166,12 @@ object CreateReport {
 
     //merge the array contents into a data frame
     val report_df = rep_array.reduceLeft(_.union(_))
-    report_df.write.json(reportExportPath)
-    //assert(report_df.count > 0)
-
-    println("### Exporting report ###")
 
     //write the contents of the data frame to a json file
+    //report_df.write.json(reportExportPath)
+    report_df.coalesce(1).write.json(reportExportPath)
 
-    println("### Export report complete ###")
+    //println("### Export report complete ###")
     spark.stop()
   }
 }
