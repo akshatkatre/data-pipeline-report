@@ -51,7 +51,6 @@ object CreateReport {
     inputFilePath: String,
     reportExportPath: String,
     spark: SparkSession): Unit = {
-    println("### Start Process ###")
 
     //read log file
     val logs = spark.read.text(inputFilePath)
@@ -114,8 +113,7 @@ object CreateReport {
     dsHighCount.cache
     dsHighCount.createOrReplaceTempView("HighCountLog")
 
-    println("### Processing Report ###")
-    //for each date in data frame dsHighCount invoke the method returnReportRow
+    //for each date in dataframe dsHighCount create new dataframes with report metrics
     //store the contents in an array
     val rep_array = dsHighCount
       .select("date")
@@ -168,10 +166,8 @@ object CreateReport {
     val report_df = rep_array.reduceLeft(_.union(_))
 
     //write the contents of the data frame to a json file
-    //report_df.write.json(reportExportPath)
     report_df.coalesce(1).write.json(reportExportPath)
 
-    //println("### Export report complete ###")
     spark.stop()
   }
 }

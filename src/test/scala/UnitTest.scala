@@ -14,6 +14,20 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
   def createSession: SparkSession =
     SparkSession.builder().master("local[*]").getOrCreate()
 
+  /*
+  Method: createReport
+      Delete the report export directory
+      Invoke the method CreateReport.generateReport()
+    Parameters:
+      inputFilePath : (String)
+        path of log file that needs to be processed.
+      reportExportPath : (String)
+        path of report export directory.
+      spark : (SparkSession)
+        SparkSession object.
+    Return Value:
+      Unit
+   */
   def createReport(
     logPath: String,
     outputPath: String)(implicit spark: SparkSession): Unit = {
@@ -22,6 +36,7 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
     import spark.implicits._
     CreateReport.generateReport(logPath, outputPath, spark)
   }
+
   info("As business user")
   info("I want to be able to validate the web traffic report")
 
