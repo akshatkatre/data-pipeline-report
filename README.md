@@ -52,7 +52,7 @@ The following assertion will be done - Read the JSON files in the report directo
 Download/Clone the repository
 
 ### Build & Unit Test
-Access the repository home and run the following command from the prompt
+Access the repository home and run the following command from the command promp.
 
 sbt assembly
 
