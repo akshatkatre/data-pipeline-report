@@ -1,18 +1,8 @@
 # Report Generation with Spark
 
-The project will outline the website traffic json report generation with Spark.
+The project covers the website traffic json report generation with Scala and Spark. The code reads an apache web server log file and outputs a JSON file. The project has been implemented with unit tests.
 
-The skeleton code was given in (https://github.com/jlcanela/spark-hands-on/wiki). 
-
-The code has been modified to do the following:
-
-- Read a Apache web server log file
-- Identify all the high traffic dates where the web-server has more than 20000 requests
-- For each high traffic date 
-	- compute the list of number of access by URI for each URI
-	- compute the list of number of access per IP address for each IP address
-	- compute the list of number of connections from 10  days before to 10 days after
-- Generate the report in a JSON file format
+The project has been built on the skeleton code was given in (https://github.com/jlcanela/spark-hands-on/wiki).
 
 ## Prerequisites
 - Java 8
@@ -34,7 +24,7 @@ The com.dsti.report.CreateReport.scala file encapsulates the logic for generatin
 	- Combine the 3 data frames into a single data frame.
 	- Store the the resultant data frame in an Array
 	- Combine all the array results into a single data frame
-	- Write the results of the data frame as a json output
+	- Write the results of the data frame as a single json file
 
 #### Unit Tests
 - The unit test cases are encapsulated in the src/test/scala/UnitTest.scala file
@@ -45,7 +35,6 @@ The com.dsti.report.CreateReport.scala file encapsulates the logic for generatin
 
 ##### Scenario 1 - Assert  _SUCCESS file
 The test case will clean the sample report output directory and then invoke the method createReport, that will in-turn invoke generate report of com.dsti.report.CreateReport object with the sample log file as input
-
 
 The following assertion will be done - Validate if the _SUCCESS file has been created in the report export directory
 
@@ -62,7 +51,7 @@ The following assertion will be done - Read the JSON files in the report directo
 ## Usage
 Download/Clone the repository
 
-### Build the fatjar
+### Build & Unit Test
 Access the repository home and run the following command from the prompt
 
 sbt assembly
@@ -70,15 +59,9 @@ sbt assembly
 The fatjar will be located in target/scala-2.11. Take note of the absolute path of the jar file 
 
 ### Generate Report 
-The report will be generate via the Spark submit utility. 
-To generate the report navigate to the bin directory of spark home
+The report will be created via the Spark-submit utility. Using the command prompt navigate to the bin directory of spark home.
 
-On windows
+To run the report generation on windows enter the below command. Specifiy the path of the fatjar, log file and report output directory.
 
 .\spark-submit --driver-memory 3g --class com.dsti.report.CreateReport --master "local[*]"  <absolute_path_of_fatjar> "absolute_path_of_log_file" "absolute_path_of_output_directory" 
-
-
-### Known Issues
-- When the program is run in spark-shell it throws an Out of Memory exception and terminates.
-To get around this issue the driver-memory has been set to 3GB while running spark-submit
 
