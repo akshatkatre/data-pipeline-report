@@ -57,7 +57,7 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
 
     scenario("Validate file count") {
       implicit val spark: SparkSession = createSession
-      Given("I have a test dataset and an output path")
+      Given("I have a test dataset and a success file created")
       val csvPath = "src/test/resources/sample.log"
       val outputPath = "target/test/report"
       val expectedNumberOfGeneratedFiles: Int = 1
@@ -71,20 +71,20 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
         }
         .length
 
-      Then("There should be a success file created in the output path")
+      Then("There should one json file in the output path")
       assert(numberOfJsonFiles == expectedNumberOfGeneratedFiles)
     }
 
     scenario("Validate file contents") {
       implicit val spark: SparkSession = createSession
-      Given("I have a test dataset and an output path and reports created")
+      Given("I have a test dataset and an output path a json file created")
       val outputPath = "target/test/report"
       val validColumnsInReport =
         Array("date", "count", "ip", "uri", "date_range")
       val expectedCount = 20000
       val validDates = List("2017-02-08", "2017-09-10")
 
-      When("I open the json files and read the count and date records")
+      When("I open the json files and read the file contents")
       val filesInReportDirectory =
         new java.io.File(outputPath).listFiles.filter(_.isFile).toList.filter {
           file =>
@@ -94,7 +94,7 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
         filesInReportDirectory.map(x => outputPath + "//" + x.getName)
 
       Then(
-        "The count of records should be greater than 20,000 and dates should be valid")
+        "The columns should match the expected column values. \n The count of records should be greater than 20,000 and dates should be valid.\n The date should be as per the expected list")
       filesToBeValidated.map(fileName => {
         val file = Source.fromFile(fileName)
         val lines = file.getLines.toList
@@ -108,10 +108,10 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
           //Validate if the columns in the report are the same as expected
           assert(df.schema.names.diff(validColumnsInReport).isEmpty)
 
-          //println(parsedJson("count").toString.toInt)
+          //Validate that the count in the file is greater than as expected
           assert(parsedJson("count").toString.toInt > expectedCount)
 
-          //println(parsedJson("date").toString)
+          //Validate the date in the file is as per the dateds in the expected list
           assert(validDates.contains(parsedJson("date").toString))
         })
       })
