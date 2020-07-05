@@ -189,7 +189,7 @@ object CreateReport {
     This method takes a date string as input and returns a data frame with the ip count for that date
   Parameters:
     dateStr : (String)
-      String with format: "YYY-MM-DD"
+      String with format: "YYYY-MM-DD"
   Return Value:
     DataFrame
      */
@@ -199,10 +199,10 @@ object CreateReport {
 
     /*
   Method: getUriDataFrame
-    This method takes a date string as input and returns a data frame with the ip count for that date
+    This method takes a date string as input and returns a data frame with the uri count for that date
   Parameters:
     dateStr : (String)
-      String with format: "YYY-MM-DD"
+      String with format: "YYYY-MM-DD"
   Return Value:
     DataFrame
      */
@@ -212,10 +212,10 @@ object CreateReport {
 
     /*
   Method: getDateRangeDataFrame
-    This method takes a date string as input and returns a data frame with the ip count for that date
+    This method takes a date string as input and returns a data frame with the count by date, 10 days before and 10 dates after the input date
   Parameters:
     dateStr : (String)
-      String with format: "YYY-MM-DD"
+      String with format: "YYYY-MM-DD"
   Return Value:
     DataFrame
      */
