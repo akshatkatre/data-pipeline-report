@@ -28,9 +28,8 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
     Return Value:
       Unit
    */
-  def createReport(
-    logPath: String,
-    outputPath: String)(implicit spark: SparkSession): Unit = {
+  def createReport(logPath: String,
+                   outputPath: String)(implicit spark: SparkSession): Unit = {
     val directory = new Directory(new File(outputPath))
     directory.deleteRecursively()
     import spark.implicits._
@@ -94,7 +93,12 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
         filesInReportDirectory.map(x => outputPath + "//" + x.getName)
 
       Then(
-        "The columns should match the expected column values. \n The count of records should be greater than 20,000 and dates should be valid.\n The date should be as per the expected list")
+        """ The columns should match the expected column values. 
+          | The count of records should be greater than 20,000 and dates should be valid.
+          | The date should be as per the expected list 
+          | The total record count should match total ip count 
+          | The total record count should match the uriCount""".stripMargin
+      )
       filesToBeValidated.map(fileName => {
         val file = Source.fromFile(fileName)
         val lines = file.getLines.toList
@@ -113,6 +117,27 @@ class UnitTest extends FeatureSpec with GivenWhenThen with SharedSparkContext {
 
           //Validate the date in the file is as per the dateds in the expected list
           assert(validDates.contains(parsedJson("date").toString))
+
+          val ipCount = parsedJson("ip").toString
+            .replace("List(", "")
+            .split(",")
+            .map(x => x.trim)
+            .map(x => x.split("-> ")(1))
+            .map(x => x.replace(")", "").toInt)
+            .reduceLeft(_ + _)
+
+          val uriCount = parsedJson("uri").toString
+            .replace("List(", "")
+            .split(",")
+            .map(x => x.split("-> ")(1))
+            .map(x => x.replace(")", "").toInt)
+            .reduceLeft(_ + _)
+
+          //validate the count equals the count of ip records
+          assert(parsedJson("count").toString.toInt == ipCount)
+
+          //validate the count equals the count of uri records
+          assert(parsedJson("count").toString.toInt == uriCount)
         })
       })
     }
