@@ -17,7 +17,7 @@ The com.dsti.report.CreateReport.scala file encapsulates the logic for generatin
 	- Read the apache web server log file.
 	- Clean, convert and enrich the contents of the log file to a spark data frame
 	- Use spark.sql to identify the dates where the number of requests exceeded 20,000 records
-	- For each of the dates invoke returnReportRow function
+	- For each of the dates
 		- Get count by IP for the date and store in data frame
 		- Get count by URI for the date and store in data frame
 		- Get count of traffic 10 days prior and 10 days after and store in data frame
