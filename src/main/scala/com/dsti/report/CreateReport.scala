@@ -1,18 +1,19 @@
 package com.dsti.report
 
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{ DataFrame, SparkSession }
 import org.apache.spark.sql.functions._
 
-case class AccessLog(ip: String,
-                     ident: String,
-                     user: String,
-                     datetime: String,
-                     request: String,
-                     status: String,
-                     size: String,
-                     referer: String,
-                     userAgent: String,
-                     unk: String)
+case class AccessLog(
+  ip: String,
+  ident: String,
+  user: String,
+  datetime: String,
+  request: String,
+  status: String,
+  size: String,
+  referer: String,
+  userAgent: String,
+  unk: String)
 
 object CreateReport {
 
@@ -25,6 +26,62 @@ object CreateReport {
 
     val sc = spark.sparkContext
     generateReport(args(0), args(1), spark)
+  }
+
+  /*
+  Method: getIpDataFrame
+    This method takes a date string as input and returns a data frame with the ip count for that date
+  Parameters:
+    dateStr : (String)
+      String with format: "YYYY-MM-DD"
+    ip_date_df : (DatafFrame)
+      DataFrame with dates, ip and their respective count
+    spark : (SparkSession)
+      SparkSession object.
+  Return Value:
+    DataFrame
+   */
+  def getIpDataFrame(
+    dateStr: String,
+    ip_date_df: DataFrame,
+    spark: SparkSession): DataFrame = {
+    ip_date_df.filter("date == '" + dateStr + "'").drop("date")
+  }
+
+  /*
+Method: getUriDataFrame
+  This method takes a date string as input and returns a data frame with the uri count for that date
+Parameters:
+  dateStr : (String)
+    String with format: "YYYY-MM-DD"
+  uri_date_df : (DatafFrame)
+    DataFrame with dates, uri and their respective count
+  spark : (SparkSession)
+    SparkSession object.
+Return Value:
+  DataFrame
+   */
+  def getUriDataFrame(
+    dateStr: String,
+    uri_date_df: DataFrame,
+    spark: SparkSession): DataFrame = {
+    uri_date_df.filter("date == '" + dateStr + "'").drop("date")
+  }
+
+  /*
+Method: getDateRangeDataFrame
+  This method takes a date string as input and returns a data frame with the count by date, 10 days before and 10 dates after the input date
+Parameters:
+  dateStr : (String)
+    String with format: "YYYY-MM-DD"
+  spark : (SparkSession)
+    SparkSession object.
+Return Value:
+  DataFrame
+   */
+  def getDateRangeDataFrame(dateStr: String, spark: SparkSession): DataFrame = {
+    spark.sql(
+      "select date, count from DateCountView where date between date_sub('" + dateStr + "',10) and date_add('" + dateStr + "',10) order by date")
   }
 
   /*
@@ -44,36 +101,31 @@ object CreateReport {
     Return Value:
       DataFrame
    */
-  def createConsolidatedDataFrame(date_count_df: DataFrame,
-                                  ip_df: DataFrame,
-                                  uri_df: DataFrame,
-                                  date_range_df: DataFrame,
-                                  spark: SparkSession): DataFrame = {
+  def createConsolidatedDataFrame(
+    date_count_df: DataFrame,
+    ip_df: DataFrame,
+    uri_df: DataFrame,
+    date_range_df: DataFrame,
+    spark: SparkSession): DataFrame = {
     date_count_df
       .withColumn(
         "ip",
         typedLit(
           ip_df.collect
             .map(x => Map(x.get(0).toString -> x.get(1).toString))
-            .toList
-        )
-      )
+            .toList))
       .withColumn(
         "uri",
         typedLit(
           uri_df.collect
             .map(x => Map(x.get(0).toString -> x.get(1).toString))
-            .toList
-        )
-      )
+            .toList))
       .withColumn(
         "date_range",
         typedLit(
           date_range_df.collect
             .map(x => Map(x.get(0).toString -> x.get(1).toString))
-            .toList
-        )
-      )
+            .toList))
   }
 
   /*
@@ -95,9 +147,10 @@ object CreateReport {
     Return Value:
       Unit
    */
-  def generateReport(inputFilePath: String,
-                     reportExportPath: String,
-                     spark: SparkSession): Unit = {
+  def generateReport(
+    inputFilePath: String,
+    reportExportPath: String,
+    spark: SparkSession): Unit = {
 
     //read log file
     val logs = spark.read.text(inputFilePath)
@@ -125,15 +178,13 @@ object CreateReport {
         params(6),
         params(7),
         params(8),
-        params(9)
-      )
+        params(9))
     })
 
     //create data frame with new datetime column
     val dsWithTime = ds.withColumn(
       "datetime",
-      to_timestamp(ds("datetime"), "dd/MMM/yyyy:HH:mm:ss X")
-    )
+      to_timestamp(ds("datetime"), "dd/MMM/yyyy:HH:mm:ss X"))
 
     //Split request column and split into method, uri and http
     val REQ_EX = "([^ ]+)[ ]+([^ ]+)[ ]+([^ ]+)".r
@@ -141,16 +192,13 @@ object CreateReport {
     val dsExtended = dsWithTime
       .withColumn(
         "method",
-        regexp_extract(dsWithTime("request"), REQ_EX.toString, 1)
-      )
+        regexp_extract(dsWithTime("request"), REQ_EX.toString, 1))
       .withColumn(
         "uri",
-        regexp_extract(dsWithTime("request"), REQ_EX.toString, 2)
-      )
+        regexp_extract(dsWithTime("request"), REQ_EX.toString, 2))
       .withColumn(
         "http",
-        regexp_extract(dsWithTime("request"), REQ_EX.toString, 3)
-      )
+        regexp_extract(dsWithTime("request"), REQ_EX.toString, 3))
       .drop("request")
 
     //cache dsExtended and create a Temp View
@@ -159,71 +207,26 @@ object CreateReport {
 
     //create data frame with dates where number of records is greater than 20000
     val dsHighCount = spark.sql(
-      "select cast(datetime as date) as date, count(*) as count from ExAccessLog group by date having count > 20000 order by count desc limit 10"
-    )
+      "select cast(datetime as date) as date, count(*) as count from ExAccessLog group by date having count > 20000 order by count desc limit 10")
 
     //cache dsHighCount and create a Temp View
     dsHighCount.cache
 
     //Create DataFrame that count grouped by date and ip
     val ip_date_df = spark.sql(
-      "select cast(datetime as date) as date, ip, count(*) as count from ExAccessLog group by date, ip"
-    )
+      "select cast(datetime as date) as date, ip, count(*) as count from ExAccessLog group by date, ip")
     ip_date_df.cache()
 
     //Create DataFrame that count grouped by date and uri
     val uri_date_df = spark.sql(
-      "select cast(datetime as date) as date, uri, count(*) as count from ExAccessLog group by date, uri"
-    )
+      "select cast(datetime as date) as date, uri, count(*) as count from ExAccessLog group by date, uri")
     uri_date_df.cache()
 
     //Create DataFrame that count grouped by date
     val count_by_dates_df = spark.sql(
-      "select cast(datetime as date) as date, count(*) as count from ExAccessLog group by date"
-    )
+      "select cast(datetime as date) as date, count(*) as count from ExAccessLog group by date")
     count_by_dates_df.cache()
     count_by_dates_df.createOrReplaceTempView("DateCountView")
-
-    /*
-  Method: getIpDataFrame
-    This method takes a date string as input and returns a data frame with the ip count for that date
-  Parameters:
-    dateStr : (String)
-      String with format: "YYYY-MM-DD"
-  Return Value:
-    DataFrame
-     */
-    def getIpDataFrame(dateStr: String): DataFrame = {
-      ip_date_df.filter("date == '" + dateStr + "'").drop("date")
-    }
-
-    /*
-  Method: getUriDataFrame
-    This method takes a date string as input and returns a data frame with the uri count for that date
-  Parameters:
-    dateStr : (String)
-      String with format: "YYYY-MM-DD"
-  Return Value:
-    DataFrame
-     */
-    def getUriDataFrame(dateStr: String): DataFrame = {
-      uri_date_df.filter("date == '" + dateStr + "'").drop("date")
-    }
-
-    /*
-  Method: getDateRangeDataFrame
-    This method takes a date string as input and returns a data frame with the count by date, 10 days before and 10 dates after the input date
-  Parameters:
-    dateStr : (String)
-      String with format: "YYYY-MM-DD"
-  Return Value:
-    DataFrame
-     */
-    def getDateRangeDataFrame(dateStr: String): DataFrame = {
-      spark.sql(
-        "select date, count from DateCountView where date between date_sub('" + dateStr + "',10) and date_add('" + dateStr + "',10) order by date"
-      )
-    }
 
     //for each date in dataframe dsHighCount create new dataframes with report metrics
     //store the contents in an array
@@ -235,19 +238,18 @@ object CreateReport {
         // get total count of records for the input date
         val date_count_df = dsHighCount.filter("date == '" + dateStr + "'")
         // get count by ipaddress for the input date
-        val ip_df = getIpDataFrame(dateStr)
+        val ip_df = getIpDataFrame(dateStr, ip_date_df, spark)
         // get count by uri for input date
-        val uri_df = getUriDataFrame(dateStr)
+        val uri_df = getUriDataFrame(dateStr, uri_date_df, spark)
         // get count by date range
-        val date_range_df = getDateRangeDataFrame(dateStr)
-
+        val date_range_df = getDateRangeDataFrame(dateStr, spark)
+        //build consolidated dataframe
         createConsolidatedDataFrame(
           date_count_df,
           ip_df,
           uri_df,
           date_range_df,
-          spark
-        )
+          spark)
       })
 
     assert(rep_array.length > 0)
